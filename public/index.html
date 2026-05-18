@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrownAirID | Group Hub</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">👑 CrownAirID Dynamic Binder</div>
+        <div class="status" id="bot-status">Initializing components...</div>
+    </nav>
+
+    <main class="dashboard-container">
+        <section class="card form-card">
+            <h2>🔗 Connect a Roblox Group</h2>
+            <div class="form-group inline-form">
+                <input type="text" id="target-group-id" placeholder="Enter Roblox Group ID">
+                <button id="btn-link-group" class="btn btn-primary" style="width: auto; margin-top: 5px;">Fetch Group</button>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+
+            <h2>➕ Map Group Rank to Discord Role</h2>
+            <form id="bind-form">
+                <div class="form-group">
+                    <label>1. Choose Discord Server</label>
+                    <select id="select-server" required><option value="">-- Select Bot Server --</option></select>
+                </div>
+                <div class="form-group">
+                    <label>2. Choose Roblox Target Rank</label>
+                    <select id="select-roblox-rank" required disabled><option value="">-- Connect a Group First --</option></select>
+                </div>
+                <div class="form-group">
+                    <label>3. Target Destination Discord Role</label>
+                    <select id="select-discord-role" required disabled><option value="">-- Select a Server First --</option></select>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 15px;">
+                    <input type="checkbox" id="check-cumulative" style="width: auto; cursor: pointer;">
+                    <label for="check-cumulative" style="margin-bottom: 0; cursor: pointer; font-weight: bold;">
+                        Cumulative Role (Given to this rank AND all ranks above it)
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary">Link Selection Profiles</button>
+            </form>
+        </section>
+
+        <section class="card table-card">
+            <h2>📋 Configured System Bindings</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Roblox Group</th>
+                            <th>Roblox Rank Connection</th>
+                            <th>Assigned Discord Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="binds-list"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="./app.js"></script>
+</body>
+</html>
