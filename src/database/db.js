@@ -72,11 +72,11 @@ export const dbQueries = {
 
     getBind: (groupId, rank) => db.prepare('SELECT * FROM group_binds WHERE group_id = ? AND roblox_rank = ?').get(groupId, rank),
     getAllBinds: () => db.prepare('SELECT * FROM group_binds').all(),
-    addBind: (groupId, rank, roleName, discordRoleId, cumulative = 0) => {
+    addBind: (groupId, rank, roleName, discordRoleId, discord_role_name, cumulative = 0) => {
         return db.prepare(`
-            INSERT INTO group_binds (group_id, roblox_rank, roblox_role_name, discord_role_id, cumulative)
-            VALUES (?, ?, ?, ?, ?)    
-        `).run(groupId, rank, roleName, discordRoleId, cumulative);
+            INSERT INTO group_binds (group_id, roblox_rank, roblox_role_name, discord_role_id, discord_role_name, cumulative)
+            VALUES (?, ?, ?, ?, ?, ?)    
+        `).run(groupId, rank, roleName, discordRoleId, discord_role_name, cumulative);
     },
     removeBind: (groupId, rank) => {
         return db.prepare('DELETE FROM group_binds WHERE group_id = ? AND roblox_rank = ?').run(groupId, rank);
