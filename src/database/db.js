@@ -33,6 +33,12 @@ const initDatabase = () => {
             cumulative INTEGER DEFAULT 0
         )
     `).run();
+
+    const columns = db.prepare(`PRAGMA table_info(group_binds)`).all();
+    const hasDiscordRoleName = columns.some(col => col.name === 'discord_role_name');
+    if(!hasDiscordRoleName) {
+        db.prepare(`ALTER TABLE group_binds ADD COLUMN discord_role_name TEXT NOT NULL DEFAULT 'Unknown Role'`).run();
+    }
 };
 
 initDatabase();

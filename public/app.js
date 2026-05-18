@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const roles = await res.json();
         selectDiscordRole.innerHTML = '<option value="">-- Select Discord Role --</option>';
         roles.forEach(r => {
-            selectDiscordRole.innerHTML += `<option value="${r.id}">@${r.name}</option>`;
+            selectDiscordRole.innerHTML += `<option value="${r.id}" data-name="${r.name}">@${r.name}</option>`;
         });
         selectDiscordRole.disabled = false;
     });
@@ -61,7 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const groupId = document.getElementById('target-group-id').value;
         const rankSelect = selectRobloxRank.options[selectRobloxRank.selectedIndex];
+        const discordRoleSelect = selectDiscordRole.options[selectDiscordRole.selectedIndex];
         const discordRoleId = selectDiscordRole.value;
+        const discordRoleName = discordRoleSelect.getAttribute('data-name');
         const isCumulative = document.getElementById('check-cumulative').checked;
 
         const response = await fetch('/api/binds', {
@@ -72,6 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 rank: parseInt(rankSelect.value, 10),
                 roleName: rankSelect.getAttribute('data-name'),
                 discordRoleId,
+                discordRoleName,
                 cumulative: isCumulative
             })
         });
@@ -96,8 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
             bindsList.innerHTML += `
                 <tr>
                     <td><code>ID: ${b.group_id}</code></td>
-                    <td><strong>${b.roblox_role_name}</strong> (Rank ${b.roblox_rank})</td>
-                    <td><span style="color:var(--accent)"><@&${b.discord_role_id}></span></td>
+                    <td><strong>${b.roblox_role_name}</strong> (Rank ${b.roblox_rank})${b.cumulative ? ' <span style="color:var(--accent);font-size:0.75rem;">[Cumulative]</span>' : ''}</td>
+                    <td><span style="color:var(--accent)">@${b.discord_role_name}</span></td>
                     <td><button class="btn btn-danger" onclick="deleteBind('${b.group_id}', ${b.roblox_rank})">Delete</button></td>
                 </tr>
             `;

@@ -29,7 +29,7 @@ client.commands.set(whoisCommand.data.name, whoisCommand);
 client.commands.set(bindCommand.data.name, bindCommand);
 client.commands.set(updateCommand.data.name, updateCommand);
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     console.log(`Bot logged in as ${client.user.tag}`);
 
     const commandsData = Array.from(client.commands.values()).map(command => command.data.toJSON());
@@ -186,15 +186,15 @@ app.get('/api/binds', (req, res) => {
 });
 
 app.post('/api/binds', (req, res) => {
-    const { groupId, rank, roleName, discordRoleId, cumulative } = req.body;
+    const { groupId, rank, roleName, discordRoleId, discordRoleName, cumulative } = req.body;
 
-    if (!groupId || rank === undefined || !roleName || !discordRoleId) {
+    if (!groupId || rank === undefined || !roleName || !discordRoleId || !discordRoleName) {
         return res.status(400).send('Missing body parameter definitions.');
     }
 
     try {
         const cumulativeFlag = cumulative ? 1 : 0;
-        dbQueries.addBind(groupId, rank, roleName, discordRoleId, cumulativeFlag);
+        dbQueries.addBind(groupId, rank, roleName, discordRoleId, discordRoleName, cumulativeFlag);
         res.sendStatus(201);
     } catch (err) {
         res.status(500).send(err.message);
