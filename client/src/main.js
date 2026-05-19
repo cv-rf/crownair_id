@@ -34,7 +34,7 @@ const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
     const authStore = useAuthStore()
 
     if (authStore.loading) {
@@ -42,21 +42,21 @@ router.beforeEach(async (to, from, next) => {
     }
 
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-        return next({ name: 'login' })
+        if (to.name !== 'login') return { name: 'login' }
+        return
     }
 
     if (to.meta.minTier) {
         const tier = getTier(authStore.user?.rankId ?? 0)
         if (tier < to.meta.minTier) {
-            return next({ name: 'dashboard' })
+            if (to.name !== 'dashboard') return { name: 'dashboard' }
+            return
         }
     }
 
     if (to.name === 'login' && authStore.isAuthenticated) {
-        return next({ name: 'dashboard' })
+        return { name: 'dashboard' }
     }
-
-    next()
 })
 
 app.use(router)

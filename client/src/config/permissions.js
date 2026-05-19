@@ -1,5 +1,5 @@
 export const TIERS = {
-    OR: { min: 2, max: 102 },
+    OR: { min: 1, max: 102 },
     OFFICER_CADET: { min: 201, max: 229 },
     SENIOR_OFFICER: { min: 237, max: 239 },
     AIR_RANK: { min: 251, max: 255 }
@@ -10,7 +10,7 @@ export function getTier(rankId) {
     if (rankId >= 237) return 4
     if (rankId >= 201) return 3
     if (rankId >= 101) return 2
-    if (rankId >= 2)   return 1
+    if (rankId >= 1)   return 1
     return 0
 }
 

@@ -4,7 +4,8 @@ import crypto from 'crypto';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
-import { dbQueries } from './database/db.js';
+// import { dbQueries } from './database/db.js';
+import { dbQueries } from "./database/index.js";
 import { fetchGroupRoleset } from './utils/roblox.js';
 import { syncUserRolesAndName } from './utils/sync.js';
 
@@ -13,6 +14,7 @@ import * as whoisCommand from './commands/whois.js';
 import * as bindCommand from './commands/bind.js';
 import * as updateCommand from './commands/update.js';
 
+import certificationRoutes from './routes/certifications.js';
 
 const app = express();
 
@@ -26,6 +28,8 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static('public'));
 app.use(cookieParser());
+
+app.use('/api/certifications', certificationRoutes);
 
 const client = new Client({ 
     intents: [
@@ -78,7 +82,7 @@ client.on('interactionCreate', async (interaction) => {
 client.on('guildMemberAdd', async (member) => {
     console.log(`[Gateway] ${member.user.tag} has joined the server.`);
 
-    const record = dbQueries.getUser(member.id);
+    const record = dbQueries.getUserByDiscordId(member.id);
     if (!record) {
         console.log(`[Gateway] User ${member.user.tag} is not verified yet. Skipping auto-sync.`);
         return;
@@ -138,7 +142,7 @@ app.get('/oauth/callback', async (req, res) => {
         const { discordId, guildId } = session;
         oauthStates.delete(state);
 
-        dbQueries.linkUser(discordId, robloxId, robloxUsername);
+        dbQueries.linkUser(robloxId, robloxUsername, discordId);
 
         try {
             if (guildId) {
@@ -147,7 +151,7 @@ app.get('/oauth/callback', async (req, res) => {
 
                 if (member) {
                     console.log(`[Web OAuth] Instantly running background role-sync for ${robloxUsername}`);
-                    const freshRecord = dbQueries.getUser(discordId);
+                    const freshRecord = dbQueries.getUserByRobloxId(robloxId);
                     await syncUserRolesAndName(member, freshRecord);
                 }
             }
@@ -209,6 +213,8 @@ app.get('/auth/roblox/callback', async (req, res) => {
         const robloxId = userData.sub;
         const robloxUsername = userData.preferred_username;
 
+        dbQueries.linkUser(robloxId, robloxUsername);
+
 
         const GROUP_ID = '35708175';
         const groupFetch = await fetch(`https://groups.roblox.com/v1/users/${robloxId}/groups/roles`);
@@ -233,6 +239,7 @@ app.get('/auth/roblox/callback', async (req, res) => {
         }
 
         const userPayload = {
+            robloxId: robloxId,
             username: robloxUsername,
             rankName: rankName,
             rankId: rankId,
@@ -330,6 +337,10 @@ app.get('/api/auth/me', (req, res) => {
         res.status(401).json({ authenticated: false, message: 'Session expired or invalid.' });
     }
 });
+
+app.get('/api/members', (req, res) => {
+    res.json(dbQueries.getAllUsers())
+})
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Web Server listening on http://localhost:${PORT}`));
