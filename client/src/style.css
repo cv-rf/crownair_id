@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f1f5f9;
+}
+
+.nav-link { @apply text-[#a0a0b0] text-sm no-underline transition-colors hover:text-white }
+
+.router-link-exact-active { @apply text-[#00aaff] }

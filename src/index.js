@@ -1,5 +1,9 @@
 import { Client, GatewayIntentBits, REST, Routes, Collection, MessageFlags } from 'discord.js';
 import express from 'express';
+import crypto from 'crypto';
+import cors from 'cors';
+import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 import { dbQueries } from './database/db.js';
 import { fetchGroupRoleset } from './utils/roblox.js';
 import { syncUserRolesAndName } from './utils/sync.js';
@@ -9,9 +13,19 @@ import * as whoisCommand from './commands/whois.js';
 import * as bindCommand from './commands/bind.js';
 import * as updateCommand from './commands/update.js';
 
+
 const app = express();
+
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.static('public'));
+app.use(cookieParser());
 
 const client = new Client({ 
     intents: [
@@ -22,6 +36,7 @@ const client = new Client({
 });
 
 const oauthStates = new Map();
+const webOAuthStates = new Set();
 
 client.commands = new Collection();
 client.commands.set(verifyCommand.data.name, verifyCommand);
@@ -147,6 +162,100 @@ app.get('/oauth/callback', async (req, res) => {
     }
 });
 
+app.get('/auth/roblox/login', (req, res) => {
+    const state = crypto.randomBytes(16).toString('hex');
+    webOAuthStates.add(state);
+
+    const robloxAuthUrl = `https://apis.roblox.com/oauth/v1/authorize?` + new URLSearchParams({
+        client_id: process.env.ROBLOX_OAUTH_CLIENT_ID,
+        redirect_uri: process.env.ROBLOX_DASHBOARD_REDIRECT_URI || process.env.ROBLOX_REDIRECT_URI,
+        response_type: 'code',
+        scope: 'openid profile',
+        state: state
+    }).toString();
+
+    res.redirect(robloxAuthUrl);
+});
+
+app.get('/auth/roblox/callback', async (req, res) => {
+    const { code, state } = req.query;
+
+    if (!webOAuthStates.has(state)) {
+        return res.status(400).send('Invalid or expired login state.');
+    }
+    webOAuthStates.delete(state);
+
+    try {
+        const tokenResponse = await fetch('https://apis.roblox.com/oauth/v1/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: process.env.ROBLOX_OAUTH_CLIENT_ID,
+                client_secret: process.env.ROBLOX_OAUTH_SECRET,
+                grant_type: 'authorization_code',
+                code: code,
+                redirect_uri: process.env.ROBLOX_DASHBOARD_REDIRECT_URI || process.env.ROBLOX_REDIRECT_URI
+            })
+        });
+
+        const tokenData = await tokenResponse.json();
+        if (!tokenResponse.ok) throw new Error(tokenData.error_description || 'Failed token exchange');
+
+        const userResponse = await fetch('https://apis.roblox.com/oauth/v1/userinfo', {
+            headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+        });
+
+        const userData = await userResponse.json();
+        const robloxId = userData.sub;
+        const robloxUsername = userData.preferred_username;
+
+
+        const GROUP_ID = '35708175';
+        const groupFetch = await fetch(`https://groups.roblox.com/v1/users/${robloxId}/groups/roles`);
+        const groupData = await groupFetch.json();
+        
+        const arafGroup = groupData.data?.find(g => g.group.id === parseInt(GROUP_ID, 10));
+
+        const rankName = arafGroup ? arafGroup.role.name : 'Guest';
+        const rankId = arafGroup ? arafGroup.role.rank : 0;
+        
+        let avatarUrl = '';
+        try {
+            const thumbnailFetch = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${robloxId}&size=150x150&format=Png&isCircular=true`);
+            const thumbnailData = await thumbnailFetch.json();
+            
+            if (thumbnailData.data && thumbnailData.data.length > 0) {
+                avatarUrl = thumbnailData.data[0].imageUrl;
+            }
+        } catch (thumbErr) {
+            console.error('Failed to resolve Roblox avatar thumbnail:', thumbErr.message);
+            avatarUrl = 'https://www.roblox.com/images/unsupported-avatar.png'; 
+        }
+
+        const userPayload = {
+            username: robloxUsername,
+            rankName: rankName,
+            rankId: rankId,
+            avatar: avatarUrl
+        };
+
+        const token = jwt.sign(userPayload, process.env.JWT_SECRET, { expiresIn: '6h' });
+
+        res.cookie('araf_session', token, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 6 * 60 * 60 * 1000 // 6 hours
+        });
+
+        res.redirect('http://localhost:5173/')
+
+    } catch (error) {
+        console.error('Web Dashboard Login Error:', error);
+        res.status(500).send('Authentication failed on our end.');
+    }
+});
+
 app.get('/api/servers', async (req, res) => {
     const servers = client.guilds.cache.map(g => ({ id: g.id, name: g.name }));
     res.json(servers);
@@ -204,6 +313,22 @@ app.post('/api/binds', (req, res) => {
 app.delete('/api/binds', (req, res) => {
     dbQueries.removeBind(req.query.groupId, parseInt(req.query.rank, 10));
     res.sendStatus(200);
+});
+
+app.get('/api/auth/me', (req, res) => {
+    const cookies = req.headers.cookie;
+    const token = cookies?.split('; ').find(row => row.startsWith('araf_session='))?.split('=')[1];
+
+    if (!token) {
+        return res.status(401).json({ authenticated: false, message: 'No session found.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        res.json({ authenticated: true, user: decoded });
+    } catch (err) {
+        res.status(401).json({ authenticated: false, message: 'Session expired or invalid.' });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
