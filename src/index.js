@@ -1,18 +1,9 @@
-import { Client, GatewayIntentBits, REST, Routes, Collection, MessageFlags } from 'discord.js';
 import express from 'express';
 import crypto from 'crypto';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
-// import { dbQueries } from './database/db.js';
 import { dbQueries } from "./database/index.js";
-import { fetchGroupRoleset } from './utils/roblox.js';
-import { syncUserRolesAndName } from './utils/sync.js';
-
-import * as verifyCommand from './commands/verify.js';
-import * as whoisCommand from './commands/whois.js';
-import * as bindCommand from './commands/bind.js';
-import * as updateCommand from './commands/update.js';
 
 import certificationRoutes from './routes/certifications.js';
 
@@ -31,75 +22,8 @@ app.use(cookieParser());
 
 app.use('/api/certifications', certificationRoutes);
 
-const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.GuildMembers
-    ] 
-});
-
 const oauthStates = new Map();
 const webOAuthStates = new Set();
-
-client.commands = new Collection();
-client.commands.set(verifyCommand.data.name, verifyCommand);
-client.commands.set(whoisCommand.data.name, whoisCommand);
-client.commands.set(bindCommand.data.name, bindCommand);
-client.commands.set(updateCommand.data.name, updateCommand);
-
-client.once('clientReady', async () => {
-    console.log(`Bot logged in as ${client.user.tag}`);
-
-    const commandsData = Array.from(client.commands.values()).map(command => command.data.toJSON());
-
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN);
-    try {
-        await rest.put(Routes.applicationCommands(process.env.DISCORD_CLIENT_ID), { body: commandsData });
-        console.log('Successfully registered global slash commands.');
-    } catch (error) {
-        console.error(error);
-    }
-});
-
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-
-    try {
-        await command.execute(interaction, oauthStates);
-    } catch (error) {
-        console.error(error);
-        await interaction.reply({
-            content: 'There was an error executing this command!',
-            flags: [MessageFlags.Ephemeral]
-        });
-    }
-});
-
-client.on('guildMemberAdd', async (member) => {
-    console.log(`[Gateway] ${member.user.tag} has joined the server.`);
-
-    const record = dbQueries.getUserByDiscordId(member.id);
-    if (!record) {
-        console.log(`[Gateway] User ${member.user.tag} is not verified yet. Skipping auto-sync.`);
-        return;
-    }
-
-    try {
-        console.log(`[Gateway Auto-syncing verified user: ${record.roblox_username}]`);
-
-        const result = await syncUserRolesAndName(member, record);
-
-        if (result.success) {
-            console.log(`[Gateway] Successfully auto-assigned roles for ${record.roblox_username}. Added: [${result.added.length}], Removed: [${result.removed.length}]`);
-        }
-    } catch (error) {
-        console.error(`[Gateway Error] Failed to auto-sync for joining member ${member.id}:`, error.message);
-    }
-});
 
 app.get('/oauth/callback', async (req, res) => {
     const { code, state } = req.query;
@@ -344,4 +268,3 @@ app.get('/api/members', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Web Server listening on http://localhost:${PORT}`));
-client.login(process.env.DISCORD_BOT_TOKEN);

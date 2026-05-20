@@ -11,7 +11,7 @@ export const initDatabase = () => {
     `).run();
 
     db.prepare(`
-        CRAETE TABLE IF NOT EXISTS user_ranks (
+        CREATE TABLE IF NOT EXISTS user_ranks (
             roblox_id TEXT PRIMARY KEY,
             rank_id INTEGER NOT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -24,7 +24,7 @@ export const initDatabase = () => {
     db.prepare(`
         CREATE TABLE IF NOT EXISTS ranks (
             id INT PRIMARY KEY,
-            name TEXT NOT NULL UNQIUE,
+            name TEXT NOT NULL UNIQUE,
             nato_code TEXT,
             description TEXT,
             priority INTEGER NOT NULL UNIQUE,
@@ -72,3 +72,5 @@ export const initDatabase = () => {
         )
     `).run();
 };
+
+initDatabase();

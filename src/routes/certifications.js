@@ -1,5 +1,5 @@
 import express from 'express';
-import { dbQueries } from '../database/db.js';
+import { dbQueries } from '../database/index.js';
 
 const router = express.Router();
 

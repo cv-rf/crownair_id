@@ -1,4 +1,4 @@
-import { dbQueries } from '../database/db.js';
+import { dbQueries } from '../database/index.js';
 
 const express = require('express');
 const router = express.Router();
